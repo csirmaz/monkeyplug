@@ -824,6 +824,13 @@ class WhisperPlugger(Plugger):
                         word['word'] = word['word'].strip()
                         word['scrub'] = scrubword(word['word']) in self.swearsMap
                         self.wordList.append(word)
+                        # Support two-word phrases (only for whisper)
+                        if len(self.wordList) > 1:
+                            phrase = self.wordList[-2]['word'] + " " + self.wordList[-1]['word']
+                            if scrubword(phrase) in self.swearsMap:
+                                self.wordList[-2]['scrub'] = True
+                                self.wordList[-2]['phrase'] = phrase
+                                self.wordList[-1]['scrub'] = True
 
         if self.debug:
             mmguero.eprint(json.dumps(self.wordList))
