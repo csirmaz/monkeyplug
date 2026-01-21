@@ -465,31 +465,16 @@ class Plugger(object):
     def CreateCleanMuteList(self):
         self.RecognizeSpeech()
 
-        self.naughtyWordList = [word for word in self.wordList if word["scrub"] is True]
-        if len(self.naughtyWordList) > 0:
-            # append a dummy word at the very end so that pairwise can peek then ignore it
-            self.naughtyWordList.extend(
-                [
-                    {
-                        "conf": 1,
-                        "end": self.naughtyWordList[-1]["end"] + 2.0,
-                        "start": self.naughtyWordList[-1]["end"] + 1.0,
-                        "word": "mothaflippin",
-                        "scrub": True,
-                    }
-                ]
-            )
-        if self.debug:
-            mmguero.eprint(self.naughtyWordList)
-
         self.muteTimeList = []
         self.sineTimeList = []
         self.beepDelayList = []
-        for word, wordPeek in pairwise(self.naughtyWordList):
+        for ix, word in enumerate(self.wordList):
+            if not word['scrub']: continue
+            wordStart0 = format(word["start"] - self.padSecPre - 5/1000, ".3f")
             wordStart = format(word["start"] - self.padSecPre, ".3f")
             wordEnd = format(word["end"] + self.padSecPost, ".3f")
             wordDuration = format(float(wordEnd) - float(wordStart), ".3f")
-            wordPeekStart = format(wordPeek["start"] - self.padSecPre, ".3f")
+            wordEnd2 = format(word["end"] + self.padSecPost + 5/1000, ".3f")
             if self.beep:
                 self.muteTimeList.append(f"volume=enable='between(t,{wordStart},{wordEnd})':volume=0")
                 self.sineTimeList.append(f"sine=f={self.beepHertz}:duration={wordDuration}")
@@ -497,12 +482,11 @@ class Plugger(object):
                     f"atrim=0:{wordDuration},adelay={'|'.join([str(int(float(wordStart) * 1000))] * 2)}"
                 )
             else:
-                self.muteTimeList.append(
-                    "afade=enable='between(t," + wordStart + "," + wordEnd + ")':t=out:st=" + wordStart + ":d=5ms"
-                )
-                self.muteTimeList.append(
-                    "afade=enable='between(t," + wordEnd + "," + wordPeekStart + ")':t=in:st=" + wordEnd + ":d=5ms"
-                )
+                # ffmpeg afade filter: t=type (in/out); st=start time; enable=whether filter applies
+                self.muteTimeList.append("afade=enable='between(t," + wordStart0 + "," + wordEnd + ")':t=out:st=" + wordStart + ":d=5ms")
+                self.muteTimeList.append("afade=enable='between(t," + wordEnd + "," + wordEnd2 + ")':t=in:st=" + wordEnd + ":d=5ms")
+                # Simpler:
+                #self.muteTimeList.append(f"volume=enable='between(t,{wordStart},{wordEnd})':volume=0")
 
         if self.debug:
             mmguero.eprint(self.muteTimeList)
