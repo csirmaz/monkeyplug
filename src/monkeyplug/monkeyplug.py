@@ -769,6 +769,7 @@ class WhisperPlugger(Plugger):
         beepDropTransition=BEEP_DROPOUT_TRANSITION_DEFAULT,
         force=False,
         dbug=False,
+        outputTxt=None
     ):
         if torchThreads > 0:
             self.torch = mmguero.dynamic_import("torch", "torch", debug=dbug)
@@ -838,6 +839,12 @@ class WhisperPlugger(Plugger):
         if self.outputJson:
             with open(self.outputJson, "w") as f:
                 f.write(json.dumps(self.wordList))
+
+        if self.outputTxt:
+            with open(self.outputTxt, "w") as f:
+                f.write("\n".join([
+                    (f"*{w['word']}*" if w['scrub'] else w['word']) for w in self.wordList
+                ]))
 
         return self.wordList
 
@@ -909,6 +916,15 @@ def RunMonkeyPlug():
         required=False,
         metavar="<string>",
         help="Output file to store transcript JSON",
+    )
+    parser.add_argument(
+        "--output-txt",
+        dest="outputTxt",
+        type=str,
+        default=None,
+        required=False,
+        metavar="<string>",
+        help="Output file to store transcript TXT",
     )
     parser.add_argument(
         "-w",
@@ -1171,6 +1187,7 @@ def RunMonkeyPlug():
             beepDropTransition=args.beepDropTransition,
             force=args.forceDespiteTag,
             dbug=args.debug,
+            outputTxt=args.outputTxt
         )
     else:
         raise ValueError(f"Unsupported speech recognition engine {args.speechRecMode}")
