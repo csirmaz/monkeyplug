@@ -222,6 +222,7 @@ class Plugger(object):
     outputAudioFileFormat = ""
     outputVideoFileFormat = ""
     outputJson = ""
+    outputTxt = None
     tmpDownloadedFileSpec = ""
     swearsFileSpec = ""
     swearsMap = {}
@@ -267,6 +268,7 @@ class Plugger(object):
         beepDropTransition=BEEP_DROPOUT_TRANSITION_DEFAULT,
         force=False,
         dbug=False,
+        outputTxt=None,
     ):
         self.padSecPre = padMsecPre / 1000.0
         self.padSecPost = padMsecPost / 1000.0
@@ -279,6 +281,7 @@ class Plugger(object):
         self.forceDespiteTag = force
         self.debug = dbug
         self.outputJson = outputJson
+        self.outputTxt = outputTxt
 
         # determine input file name, or download and save file
         if (iFileSpec is not None) and os.path.isfile(iFileSpec):
@@ -805,6 +808,7 @@ class WhisperPlugger(Plugger):
             beepDropTransition=beepDropTransition,
             force=force,
             dbug=dbug,
+            outputTxt=outputTxt,
         )
 
         if self.debug:
