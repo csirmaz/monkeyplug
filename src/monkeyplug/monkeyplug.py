@@ -88,15 +88,8 @@ script_name = os.path.basename(__file__)
 script_path = os.path.dirname(os.path.realpath(__file__))
 
 
-# thanks https://docs.python.org/3/library/itertools.html#recipes
-def pairwise(iterable):
-    a, b = tee(iterable)
-    next(b, None)
-    return zip(a, b)
-
-
 def scrubword(value):
-    return str(value).lower().replace("’", "'").lower().strip(string.punctuation)
+    return str(value).lower().replace("’", "'").replace("...", "").lower().strip(string.punctuation)
 
 
 ###################################################################################################
@@ -827,15 +820,18 @@ class WhisperPlugger(Plugger):
                 if 'words' in segment:
                     for word in segment['words']:
                         word['word'] = word['word'].strip()
-                        word['scrub'] = scrubword(word['word']) in self.swearsMap
+                        word['scrub'] = scrubword(word['word']) in self.swearsMap  # Check whether the word itself should be removed
                         self.wordList.append(word)
-                        # Support two-word phrases (only for whisper)
-                        if len(self.wordList) > 1:
-                            phrase = self.wordList[-2]['word'] + " " + self.wordList[-1]['word']
-                            if scrubword(phrase) in self.swearsMap:
-                                self.wordList[-2]['scrub'] = True
-                                self.wordList[-2]['phrase'] = phrase
-                                self.wordList[-1]['scrub'] = True
+                        # Support longer phrases (only for whisper)
+                        for phraselen in range(2, 4): # 2, 3 - Max phrase length set here
+                            if len(self.wordList) >= phraselen:
+                                phrase = self.wordList[-phraselen:]
+                                phrase = [v['word'] for v in phrase]
+                                phrase = " ".join(phrase)
+                                if scrubword(phrase) in self.swearsMap:
+                                    self.wordList[-phraselen]['phrase'] = phrase
+                                    for i in range(phraselen):
+                                        self.wordList[-1-i]['scrub'] = True
 
         if self.debug:
             mmguero.eprint(json.dumps(self.wordList))
@@ -846,9 +842,11 @@ class WhisperPlugger(Plugger):
 
         if self.outputTxt:
             with open(self.outputTxt, "w") as f:
-                f.write("\n".join([
-                    (f"*{w['word']}*" if w['scrub'] else w['word']) for w in self.wordList
-                ]))
+                for w in self.wordList:
+                    l = f"*{w['word']}*" if w['scrub'] else w['word']
+                    if 'phrase' in w:
+                        l = f"{l} ({w['phrase']})"
+                    f.write(f"{l}\n");
 
         return self.wordList
 
